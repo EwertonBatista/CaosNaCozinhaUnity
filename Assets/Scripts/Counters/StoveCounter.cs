@@ -206,5 +206,15 @@ public class StoveCounter : BaseCounter, IHashProgress
         }
         return null;
     }
+
+    public State GetCurrentState()
+    {
+        return state;
+    }
+
+    public bool IsFried()
+    {
+        return state == State.Fried;
+    }
 }
  
