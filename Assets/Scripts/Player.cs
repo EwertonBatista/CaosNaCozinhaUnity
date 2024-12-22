@@ -2,15 +2,16 @@ using Unity.VisualScripting;
 using UnityEngine;
 using System;
 using UnityEngine.Events;
+using Unity.Netcode;
 
-public class Player : MonoBehaviour, IKitchenObjectParent
+public class Player : NetworkBehaviour, IKitchenObjectParent
 {
 
-    public static Player Instance { get; private set; }
+    //public static Player Instance { get; private set; }
 
     [SerializeField] private float moveSpeed = 10f;
     [SerializeField] private float rotateSpeed = 20f;
-    [SerializeField] private GameInput gameInput;
+    //[SerializeField] private GameInput gameInput;
     [SerializeField] private LayerMask countersLayerMask;
     [SerializeField] private Transform SpawnPoint;
 
@@ -30,18 +31,14 @@ public class Player : MonoBehaviour, IKitchenObjectParent
 
     private void Awake()
     {
-        if (Instance != null)
-        {
-            Debug.LogError("Muitos player");
-        }
-            Instance = this;
+            //Instance = this;
     }
     private void Start()
     {
-        gameInput.OnInteractAction += GameInput_OnInteractAction;
-        gameInput.OnInteractAlternateAction += GameInput_OnInteractAlternateAction;
+        GameInput.Instance.OnInteractAction += GameInput_OnInteractAction;
+        GameInput.Instance.OnInteractAlternateAction += GameInput_OnInteractAlternateAction;
     }
-
+    
     private void GameInput_OnInteractAlternateAction(object sender, EventArgs e)
     {
         if (!GameManager.Instance.IsGamePlaying()) return;
@@ -53,6 +50,7 @@ public class Player : MonoBehaviour, IKitchenObjectParent
 
     private void GameInput_OnInteractAction(object sender, System.EventArgs e)
     {
+        Debug.Log("Interacao ocorreu");
         if (!GameManager.Instance.IsGamePlaying()) return;
         if (selectedCounter != null)
         {
@@ -62,8 +60,12 @@ public class Player : MonoBehaviour, IKitchenObjectParent
 
     private void Update()
     {
-        HandleMovement();
+        if (!IsOwner)
+        {
+            return;
+        }
         HandleInteractions();
+        HandleMovement();
     }
 
     public bool IsWalking()
@@ -73,7 +75,7 @@ public class Player : MonoBehaviour, IKitchenObjectParent
 
     private void HandleInteractions()
     {
-        Vector2 inputVector = gameInput.GetMovementVectorNormalized();
+        Vector2 inputVector = GameInput.Instance.GetMovementVectorNormalized();
         Vector3 moveDirection = new Vector3(inputVector.x, 0, inputVector.y);
         if (moveDirection != Vector3.zero) lastInteractionDirection = moveDirection;
         float interactDistance = 2f;
@@ -97,10 +99,11 @@ public class Player : MonoBehaviour, IKitchenObjectParent
         }
     }
 
+
     private void HandleMovement()
     {
 
-        Vector2 inputVector = gameInput.GetMovementVectorNormalized();
+        Vector2 inputVector = GameInput.Instance.GetMovementVectorNormalized();
         Vector3 moveDirection = new Vector3(inputVector.x, 0, inputVector.y);
         isWalking = moveDirection != Vector3.zero;
 
