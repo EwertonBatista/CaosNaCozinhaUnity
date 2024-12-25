@@ -1,4 +1,5 @@
 using System;
+using Unity.Netcode;
 using UnityEngine;
 
 public class CuttingCounter : BaseCounter, IHashProgress
@@ -28,13 +29,9 @@ public class CuttingCounter : BaseCounter, IHashProgress
             {
                 if(HasRecipeWithInput(player.GetKitchenObject().GetKitchenObjectsSO()))
                 {
-                    player.GetKitchenObject().SetKitchenObjectParent(this);
-                    cuttingProgress = 0;
-                    CuttingRecipeSO cuttingRecipeSO = GetCuttingRecipeSOWithInput(GetKitchenObject().GetKitchenObjectsSO());
-                    OnProgressChanged?.Invoke(this, new IHashProgress.OnProgressChangedEventArts
-                    {
-                        progressNormalized = (float)cuttingProgress / cuttingRecipeSO.cuttingProgessMax
-                    });
+                    KitchenObject kitchenObject = player.GetKitchenObject();
+                    kitchenObject.SetKitchenObjectParent(this);
+                    InteractPlaceObjectOnCounterServerRpc();
                 }
             }
             else
@@ -62,26 +59,63 @@ public class CuttingCounter : BaseCounter, IHashProgress
         }
     }
 
+    [ServerRpc(RequireOwnership = false)]
+    private void InteractPlaceObjectOnCounterServerRpc() 
+    {
+        InteractPlaceObjectOnCounterClientRpc();
+    }
+
+    [ClientRpc]
+    private void InteractPlaceObjectOnCounterClientRpc() 
+    {
+        cuttingProgress = 0;
+        OnProgressChanged?.Invoke(this, new IHashProgress.OnProgressChangedEventArts
+        {
+            progressNormalized = 0f
+        }); ;
+    }
+
     public override void InteractAlternate(Player player)
     {
         if (HasKitchenObject() && HasRecipeWithInput(GetKitchenObject().GetKitchenObjectsSO()))
         {
-            cuttingProgress++;
-            OnCut?.Invoke(this, EventArgs.Empty);
-            OnAnyCut?.Invoke(this, EventArgs.Empty);
-            CuttingRecipeSO cuttingRecipeSO = GetCuttingRecipeSOWithInput(GetKitchenObject().GetKitchenObjectsSO());
+            CutObjectServerRpc();
+            TestCuttingProgressDoneServerRpc();
+        }
+    }
 
-            OnProgressChanged?.Invoke(this, new IHashProgress.OnProgressChangedEventArts
-            {
-                progressNormalized = (float)cuttingProgress / cuttingRecipeSO.cuttingProgessMax
-            });
+    [ServerRpc(RequireOwnership = false)]
+    private void CutObjectServerRpc()
+    {
+        CutObjectClientRpc();
+    }
 
-            if (cuttingProgress >= cuttingRecipeSO.cuttingProgessMax)
-            {
-                KitchenObjectsSO output = GetOutputForInput(GetKitchenObject().GetKitchenObjectsSO());
-                GetKitchenObject().DestroySelf();
-                KitchenObject.SpawnKitchenObject(output, this);
-            }
+    [ClientRpc]
+    private void CutObjectClientRpc()
+    {
+        cuttingProgress++;
+        OnCut?.Invoke(this, EventArgs.Empty);
+        OnAnyCut?.Invoke(this, EventArgs.Empty);
+        CuttingRecipeSO cuttingRecipeSO = GetCuttingRecipeSOWithInput(GetKitchenObject().GetKitchenObjectsSO());
+
+        OnProgressChanged?.Invoke(this, new IHashProgress.OnProgressChangedEventArts
+        {
+            progressNormalized = (float)cuttingProgress / cuttingRecipeSO.cuttingProgessMax
+        });
+
+
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void TestCuttingProgressDoneServerRpc()
+    {
+        CuttingRecipeSO cuttingRecipeSO = GetCuttingRecipeSOWithInput(GetKitchenObject().GetKitchenObjectsSO());
+
+        if (cuttingProgress >= cuttingRecipeSO.cuttingProgessMax)
+        {
+            KitchenObjectsSO output = GetOutputForInput(GetKitchenObject().GetKitchenObjectsSO());
+            KitchenObject.DestroyKitchenObject(GetKitchenObject());
+            KitchenObject.SpawnKitchenObject(output, this);
         }
     }
 

@@ -1,0 +1,4 @@
+repository "CaosNaCozinha@LoboosoGames@cloud"
+  path "/"
+    br "/main"
+    co "/main"
